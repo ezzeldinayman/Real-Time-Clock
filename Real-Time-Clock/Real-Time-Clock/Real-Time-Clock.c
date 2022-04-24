@@ -7,6 +7,8 @@
 
 #define F_CPU 8000000UL
 #include <avr/io.h>
+#include "LCD.h"
+#include "keypad.h"
 #include "Seven_Segment.h"
 #include <util/delay.h>
 #include "Timers.h"
@@ -14,29 +16,94 @@
 #include "std_macros.h"
 
 void DisplayTime(char* time);
-void updateTime(unsigned long totalSeconds, char* time);
+void CalculateTime(unsigned long totalSeconds, char* time);
+void StopWatch(unsigned long seconds);
 volatile unsigned char mux_flag = 0;
 volatile unsigned long totalSeconds = 0;
-
+volatile char* time = 0x300;
 
 
 int main(void)
 {
-	seven_segment_vInit('D');
+	LCD_vInit();
+	LCD_vSend_string("Hello, World");
+	keypad_vInit();
+	seven_segment_vInit('B');
+	DIO_vSETPORTDir('C',0x3F);
+	
 	sei();
 	timer0_CTC_interrupt_Init();
 	timer2_OV_interrupt_init();
-	DIO_vSETPORTDir('C',0x3F);
-	DIO_vSETPORTDir('B',0xFF);
-	//unsigned long totalSeconds = 0;
-	char* time = 0x300;
+	
+
+	char* inputs = 0x320;
+	char keypadInput = 0xFF;
+	label:
+	LCD_clearscreen();
+	LCD_vSend_string("1 to set clock");
+	LCD_movecursor(2,1);
+	LCD_vSend_string("2 to start stopwatch");
+	
     while(1)
     {
-
-		updateTime(totalSeconds, time);
-		DisplayTime(time);
+		do 
+		{
+			keypadInput = keypad_u8read();
+		} while(keypadInput == 0xFF);
+		
+		if(keypadInput == '2')
+		{
+			LCD_clearscreen();
+			LCD_vSend_string("0 to reset");
+			LCD_movecursor(2,1);
+			LCD_vSend_string("A to pause");
+			unsigned long stopwatchTime = 0;
+			totalSeconds=0;
+			//stopwatch ON
+			while(1)
+			{
+				if(keypad_u8read()=='A')
+				{
+					_delay_ms(180);
+					stopwatchTime = totalSeconds;
+					LCD_clearscreen();
+					LCD_vSend_string("PAUSED");
+					LCD_movecursor(2,1);
+					LCD_vSend_string("Press A");
+					do
+					{
+						CalculateTime(stopwatchTime,time);
+						DisplayTime(time);
+					}
+					while (keypad_u8read() != 'A');
+					_delay_ms(180);
+					totalSeconds = stopwatchTime;
+					LCD_clearscreen();
+					LCD_vSend_string("BACK");	
+				}
+				
+				if (keypad_u8read() == '0')
+				{
+					goto label;
+				}
+				
+				StopWatch(totalSeconds);
+			}				
+				
+			
+		}
+		
+		
     }
 }
+
+
+void StopWatch(unsigned long seconds)
+{
+		CalculateTime(seconds, time);
+		DisplayTime(time);
+}
+
 
 void DisplayTime(char* time)
 {
@@ -79,12 +146,13 @@ void DisplayTime(char* time)
 	time = time+2;
 }
 
-void updateTime(unsigned long totalSeconds, char* time)
+void CalculateTime(unsigned long totalSeconds, char* time)
 {
 	(*time) = totalSeconds/3600; //hours
 	(*(time+1)) = (totalSeconds -(3600*(*time)))/60; //minutes
 	(*(time+2)) = (totalSeconds -(3600 * (*time))-((*(time+1))*60)); //seconds
 }
+//void UpdateTime();
 
 ISR(TIMER0_COMP_vect)
 {

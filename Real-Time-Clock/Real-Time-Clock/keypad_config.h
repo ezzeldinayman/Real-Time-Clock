@@ -9,7 +9,7 @@
 #ifndef KEYPAD_CONFIG_H_
 #define KEYPAD_CONFIG_H_
 
-#define KPORT 'C'
+#define KPORT 'D'
 
 
 

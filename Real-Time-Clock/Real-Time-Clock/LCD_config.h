@@ -12,7 +12,7 @@
 
 //This is a configuration file for LCD
 #define LCD_PORT 'A' //PORT that LCD Data Lines Connected to.
-#define CTRL_PORT 'B' //PORT That LCD Enable,Read Write, Register Selecrt Pins are Connected to.
+#define CTRL_PORT 'A' //PORT That LCD Enable,Read Write, Register Selecrt Pins are Connected to.
 #define FOUR_BITS_MODE //Mode of operation of LCD (FOUR_BITS_MODE ==> 4 bits / EIGHT_BITS_MODE ==> 8 bits)
 
 
