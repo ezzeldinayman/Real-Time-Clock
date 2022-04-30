@@ -16,8 +16,8 @@
 #include "std_macros.h"
 
 void DisplayTime(char* time);
-void CalculateTime(unsigned long totalSeconds, char* time);
 void StopWatch(unsigned long seconds);
+void RealTimeClock();
 volatile unsigned char mux_flag = 0;
 volatile unsigned long totalSeconds = 0;
 volatile char* time = 0x300;
@@ -38,11 +38,13 @@ int main(void)
 
 	char* inputs = 0x320;
 	char keypadInput = 0xFF;
-	label:
+	reset:
 	LCD_clearscreen();
 	LCD_vSend_string("1 to set clock");
 	LCD_movecursor(2,1);
 	LCD_vSend_string("2 to start stopwatch");
+	unsigned char m = 0;
+	unsigned char h = 0;
 	
     while(1)
     {
@@ -70,10 +72,10 @@ int main(void)
 					LCD_vSend_string("PAUSED");
 					LCD_movecursor(2,1);
 					LCD_vSend_string("Press A");
+					//PAUSED MODE
 					do
 					{
-						CalculateTime(stopwatchTime,time);
-						DisplayTime(time);
+						StopWatch(stopwatchTime);
 					}
 					while (keypad_u8read() != 'A');
 					_delay_ms(180);
@@ -84,24 +86,101 @@ int main(void)
 				
 				if (keypad_u8read() == '0')
 				{
-					goto label;
+					goto reset;
 				}
 				
 				StopWatch(totalSeconds);
-			}				
-				
-			
+			}					
 		}
 		
-		
+		//time configuration
+				
+		if(keypadInput=='1')
+		{
+			LCD_clearscreen();
+			LCD_vSend_string("hours: ");
+			_delay_ms(200);
+			char counter = 0;
+			char input;
+			for(counter = 0;counter<2;counter++)
+			{
+				do 
+				{
+					input = keypad_u8read();
+					if(input-'0'<=9)
+					{
+						h = (h*10)+(input-'0');
+						LCD_vSend_char(input);
+					}
+					else if(input == '0') goto reset;
+				} while (input==0xFF);
+				_delay_ms(250);
+			}
+			(*time) = h;
+							
+			LCD_clearscreen();
+			LCD_vSend_string("Minutes: ");
+			_delay_ms(200);
+			for(counter = 0;counter<2;counter++)
+			{
+				do
+				{
+					input = keypad_u8read();
+					if(input-'0'<=9)
+					{
+						m = (m*10)+(input-'0');
+						LCD_vSend_char(input);
+					}
+					else if(input == '0') goto reset;
+				} while (input==0xFF);
+				_delay_ms(250);
+			}
+			(*(time+1)) = m;
+			(*(time+2)) = 0;
+			
+			//REALTIME CLOCK ON
+			LCD_clearscreen();
+			LCD_vSend_string("Press A to Reset");
+			while(1)
+			{
+				if (keypad_u8read()=='A')
+				{
+					(*(time+2)) = 0;
+					goto reset;
+				}
+				RealTimeClock();
+			}	
+		}		
     }
 }
 
 
 void StopWatch(unsigned long seconds)
 {
-		CalculateTime(seconds, time);
+		totalSeconds = seconds;
+		(*time) = totalSeconds/3600; //hours
+		(*(time+1)) = (totalSeconds-(3600*(*time)))/60; //minutes
+		(*(time+2)) = (totalSeconds -(3600 * (*time))-((*(time+1))*60)); //seconds
 		DisplayTime(time);
+}
+
+void RealTimeClock()
+{
+	if((*(time+2))>59)
+	{
+		(*(time+1))++;
+		(*(time+2)) = 0;
+	}
+	if((*(time+1))>59)
+	{
+		(*time)++;
+		(*(time+1)) = 0;
+	}
+	if((*time)>23)
+	{
+		(*time) = 0;
+	}
+	DisplayTime(time);
 }
 
 
@@ -146,13 +225,6 @@ void DisplayTime(char* time)
 	time = time+2;
 }
 
-void CalculateTime(unsigned long totalSeconds, char* time)
-{
-	(*time) = totalSeconds/3600; //hours
-	(*(time+1)) = (totalSeconds -(3600*(*time)))/60; //minutes
-	(*(time+2)) = (totalSeconds -(3600 * (*time))-((*(time+1))*60)); //seconds
-}
-//void UpdateTime();
 
 ISR(TIMER0_COMP_vect)
 {
@@ -162,5 +234,6 @@ ISR(TIMER0_COMP_vect)
 
 ISR(TIMER2_OVF_vect)
 {
+	(*(time+2))++;
 	totalSeconds++;
 }
