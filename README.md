@@ -1,5 +1,5 @@
 # Real-Time-Clock
-RTC project using Atmega32 LCD, Seven-Segments, Timers, Crystal Quartz and keypad
+Real Time Clock and Stopwatch project using Atmega32 LCD, Seven-Segments, Timers, Crystal Quartz and keypad
 
 
 
